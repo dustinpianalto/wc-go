@@ -1,14 +1,15 @@
 package wc
 
 import (
-	"bufio"
 	"fmt"
-	"log"
+	"io"
 	"os"
+	"runtime"
 )
 
+const BufferSize = 1024 * 1024
+
 type Counter struct {
-	FileReader    *bufio.Reader
 	Words         int64
 	Chars         int64
 	Lines         int64
@@ -27,28 +28,82 @@ func Count(filename string, cw, cc, cl, cb, mll bool) {
 	file, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	defer file.Close()
-	processLine := cw || cc
-	var c = Counter{FileReader: bufio.NewReader(file)}
-	if cl && !processLine {
-		c.CountLines(cb)
+	fi, err := file.Stat()
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
-	fmt.Printf("%d %s\n", c.Lines, filename)
+	size := fi.Size()
+
+	processLine := cw || cc
+
+	var c = &Counter{}
+	numWorkers := runtime.NumCPU()
+
+	chunks := make(chan []byte, numWorkers)
+	counts := make(chan int64, numWorkers)
+
+	for i := 0; i < numWorkers; i++ {
+		go ConcurrentChunkCounter(chunks, counts)
+	}
+
+	if cl && !processLine {
+		for {
+			buf := make([]byte, BufferSize)
+			bytes, err := file.Read(buf)
+			chunks <- buf[:bytes]
+			if err != nil {
+				if err == io.EOF {
+					break
+				} else {
+					panic(err)
+				}
+			}
+		}
+		close(chunks)
+		for i := 0; i < numWorkers; i++ {
+			c.Lines += <-counts
+		}
+		close(counts)
+	}
+
+	if cb {
+		c.Bytes = size
+	}
+
+	if c.Lines > 0 {
+		fmt.Printf("%d ", c.Lines)
+	}
+	if c.Words > 0 {
+		fmt.Printf("%d ", c.Words)
+	}
+	if c.Chars > 0 {
+		fmt.Printf("%d ", c.Words)
+	}
+	if c.Bytes > 0 {
+		fmt.Printf("%d ", c.Bytes)
+	}
+	if c.MaxLineLength > 0 {
+		fmt.Printf("%d ", c.MaxLineLength)
+	}
+	fmt.Printf("%s\n", filename)
 }
 
-func (c *Counter) CountLines(cb bool) {
-	for {
-		r, s, err := c.FileReader.ReadRune()
-		log.Printf("%#v, %#v, %#v", r, s, err)
-		if err != nil {
-			break
-		}
-		if r == '\n' {
-			c.Lines++
-		}
-		if cb {
-			c.Bytes += int64(s)
-		}
-	}
-}
+//func (c *Counter) CountLines() {
+//	for {
+//		_, p, err := c.FileReader.ReadLine()
+//		if err != nil && err != io.EOF {
+//			panic(err)
+//		}
+//		if err == io.EOF {
+//			break
+//		}
+//		if !p {
+//			c.Lines++
+//		}
+//	}
+//	c.Lines--
+//}

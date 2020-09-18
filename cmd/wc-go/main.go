@@ -33,6 +33,8 @@ package main
 //              output version information and exit
 
 import (
+	"fmt"
+
 	"github.com/droundy/goopt"
 	"github.com/dustinpianalto/wc-go/pkg/wc"
 )
@@ -67,5 +69,11 @@ var (
 func main() {
 	goopt.Version = "v0.0.0a"
 	goopt.Parse(nil)
-	wc.Count("main.go", *fWords, *fChars, *fLines, *fBytes, *fMaxLineLength)
+	if len(goopt.Args) == 0 {
+		fmt.Println(goopt.Help())
+	} else {
+		for _, a := range goopt.Args {
+			wc.Count(a, *fWords, *fChars, *fLines, *fBytes, *fMaxLineLength)
+		}
+	}
 }
