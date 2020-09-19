@@ -12,38 +12,48 @@ type ComplexCount struct {
 	MaxLineLength int64
 }
 
-func GetComplexCount(chunk []byte) ComplexCount {
+type ComplexChunk struct {
+	PrevRune rune
+	Chunk    []byte
+}
+
+func GetComplexCount(chunk ComplexChunk) ComplexCount {
 	var count = ComplexCount{}
-	word := false
 	var lineLength int64
-	runes := bytes.Runes(chunk)
+	runes := bytes.Runes(chunk.Chunk)
+	prevRuneIsSpace := unicode.IsSpace(chunk.PrevRune)
+	var linepos int64
 	for _, b := range runes {
 		count.CharCount++
-		if b == '\n' {
-			if lineLength > count.MaxLineLength {
-				count.MaxLineLength = lineLength
+		if b == '\n' || b == '\r' || b == '\f' {
+			if linepos > lineLength {
+				lineLength = linepos
 			}
-			lineLength = 0
-			count.LineCount++
-			if word {
-				word = false
-				count.WordCount++
+			linepos = 0
+			if b == '\n' {
+				count.LineCount++
 			}
-		} else if unicode.IsSpace(b) {
-			lineLength++
-			if word {
-				word = false
-				count.WordCount++
+		}
+		if unicode.IsSpace(b) {
+			if b == '\t' {
+				linepos += 8 - (linepos % 8)
+			} else if b != '\n' && b != '\r' && b != '\f' && b != '\v' {
+				linepos++
 			}
+			prevRuneIsSpace = true
 		} else {
-			lineLength++
-			word = true
+			linepos++
+			if prevRuneIsSpace {
+				count.WordCount++
+			}
+			prevRuneIsSpace = false
 		}
 	}
+	count.MaxLineLength = lineLength
 	return count
 }
 
-func ConcurrentComplexChunkCounter(chunks <-chan []byte, counts chan<- ComplexCount) {
+func ConcurrentComplexChunkCounter(chunks <-chan ComplexChunk, counts chan<- ComplexCount) {
 	var totalCount ComplexCount
 	for chunk := range chunks {
 		count := GetComplexCount(chunk)

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
+	"unicode/utf8"
 )
 
-const BufferSize = 1024 * 1024
+const BufferSize = 1024 * 1024 * 4
 
 type Counter struct {
 	Words         int64
@@ -35,7 +35,7 @@ func Count(filename string, cw, cc, cl, cb, mll bool) {
 	processLine := cw || cc
 
 	var c = &Counter{}
-	numWorkers := runtime.NumCPU()
+	numWorkers := 2 //runtime.NumCPU()
 
 	if cl && !processLine {
 		c.Lines = CountLines(file, numWorkers)
@@ -60,7 +60,7 @@ func Count(filename string, cw, cc, cl, cb, mll bool) {
 		fmt.Printf("%d ", c.Words)
 	}
 	if cc {
-		fmt.Printf("%d ", c.Words)
+		fmt.Printf("%d ", c.Chars)
 	}
 	if cb {
 		fmt.Printf("%d ", c.Bytes)
@@ -104,17 +104,18 @@ func CountLines(file *os.File, numWorkers int) int64 {
 func CountComplex(file *os.File, numWorkers int) *Counter {
 	counter := Counter{}
 
-	chunks := make(chan []byte, numWorkers)
+	chunks := make(chan ComplexChunk, numWorkers)
 	counts := make(chan ComplexCount, numWorkers)
 
 	for i := 0; i < numWorkers; i++ {
 		go ConcurrentComplexChunkCounter(chunks, counts)
 	}
-
+	var lastRune rune = ' ' // Fake the first char being a space so that the first word is counted
 	for {
 		buf := make([]byte, BufferSize)
 		count, err := file.Read(buf)
-		chunks <- buf[:count]
+		chunks <- ComplexChunk{lastRune, buf[:count]}
+		lastRune, _ = utf8.DecodeLastRune(buf[:count])
 		if err != nil {
 			if err == io.EOF {
 				break
