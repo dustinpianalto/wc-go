@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"unicode/utf8"
 )
 
@@ -17,25 +18,18 @@ type Counter struct {
 	MaxLineLength int64
 }
 
-func Count(filename string, cw, cc, cl, cb, mll bool) {
-	if !cw && !cc && !cl && !cb && !mll {
-		cw = true
-		cc = false
-		cl = true
-		cb = true
-		mll = false
-	}
+func Count(filename string, cw, cc, cl, cb, mll bool) (Counter, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return Counter{}, err
 	}
 	defer file.Close()
 
 	processLine := cw || cc
 
 	var c = &Counter{}
-	numWorkers := 2 //runtime.NumCPU()
+	numWorkers := runtime.NumCPU()
 
 	if cl && !processLine {
 		c.Lines = CountLines(file, numWorkers)
@@ -48,27 +42,11 @@ func Count(filename string, cw, cc, cl, cb, mll bool) {
 		fi, err := file.Stat()
 		if err != nil {
 			fmt.Println(err)
-			return
+			return Counter{}, err
 		}
 		c.Bytes = fi.Size()
 	}
-
-	if cl {
-		fmt.Printf("%d ", c.Lines)
-	}
-	if cw {
-		fmt.Printf("%d ", c.Words)
-	}
-	if cc {
-		fmt.Printf("%d ", c.Chars)
-	}
-	if cb {
-		fmt.Printf("%d ", c.Bytes)
-	}
-	if mll {
-		fmt.Printf("%d ", c.MaxLineLength)
-	}
-	fmt.Printf("%s\n", filename)
+	return *c, nil
 }
 
 func CountLines(file *os.File, numWorkers int) int64 {

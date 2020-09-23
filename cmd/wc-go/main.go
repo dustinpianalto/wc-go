@@ -72,8 +72,66 @@ func main() {
 	if len(goopt.Args) == 0 {
 		fmt.Println(goopt.Help())
 	} else {
+		if !*fWords && !*fChars && !*fLines && !*fBytes && !*fMaxLineLength {
+			*fWords = true
+			*fChars = false
+			*fLines = true
+			*fBytes = true
+			*fMaxLineLength = false
+		}
+		var TotalCounts wc.Counter
 		for _, a := range goopt.Args {
-			wc.Count(a, *fWords, *fChars, *fLines, *fBytes, *fMaxLineLength)
+			count, err := wc.Count(a, *fWords, *fChars, *fLines, *fBytes, *fMaxLineLength)
+			if err == nil {
+				TotalCounts.Lines += count.Lines
+				TotalCounts.Bytes += count.Bytes
+				TotalCounts.Words += count.Words
+				TotalCounts.Chars += count.Chars
+				TotalCounts.MaxLineLength += count.MaxLineLength
+				if *fLines {
+					fmt.Printf("%d", count.Lines)
+				}
+				fmt.Printf(" ")
+				if *fWords {
+					fmt.Printf("%d", count.Words)
+				}
+				fmt.Printf(" ")
+				if *fChars {
+					fmt.Printf("%d", count.Chars)
+				}
+				fmt.Printf(" ")
+				if *fBytes {
+					fmt.Printf("%d", count.Bytes)
+				}
+				fmt.Printf(" ")
+				if *fMaxLineLength {
+					fmt.Printf("%d", count.MaxLineLength)
+				}
+				fmt.Printf(" %s\n", a)
+			}
+
+		}
+		if len(goopt.Args) > 1 {
+			if *fLines {
+				fmt.Printf("%d", TotalCounts.Lines)
+			}
+			fmt.Printf(" ")
+			if *fWords {
+				fmt.Printf("%d", TotalCounts.Words)
+			}
+			fmt.Printf(" ")
+			if *fChars {
+				fmt.Printf("%d", TotalCounts.Chars)
+			}
+			fmt.Printf(" ")
+			if *fBytes {
+				fmt.Printf("%d", TotalCounts.Bytes)
+			}
+			fmt.Printf(" ")
+			if *fMaxLineLength {
+				fmt.Printf("%d", TotalCounts.MaxLineLength)
+			}
+			fmt.Println(" total")
 		}
 	}
 }
