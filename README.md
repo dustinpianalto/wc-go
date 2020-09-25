@@ -1,2 +1,2 @@
 # wc-go
-A full implementation of Unix's `wc` written in Go
+A full implementation of GNU's `wc` written in Go
