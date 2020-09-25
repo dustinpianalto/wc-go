@@ -25,6 +25,15 @@ func Count(filename string, cw, cc, cl, cb, mll bool) (Counter, error) {
 		return Counter{}, err
 	}
 	defer file.Close()
+	fi, err := file.Stat()
+	if err != nil {
+		fmt.Println(err)
+		return Counter{}, err
+	}
+	if fi.IsDir() {
+		fmt.Printf("wc-go: %s: Is a directory\n", filename)
+		return Counter{}, err
+	}
 
 	processLine := cw || cc
 
@@ -39,11 +48,6 @@ func Count(filename string, cw, cc, cl, cb, mll bool) (Counter, error) {
 	}
 
 	if cb {
-		fi, err := file.Stat()
-		if err != nil {
-			fmt.Println(err)
-			return Counter{}, err
-		}
 		c.Bytes = fi.Size()
 	}
 	return *c, nil

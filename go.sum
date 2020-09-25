@@ -1,2 +1,8 @@
 github.com/droundy/goopt v0.0.0-20170604162106-0b8effe182da h1:79H+mNJWOObWrQgbkSvvZ3t/D2lKWaTi9mu/v7fNRvg=
 github.com/droundy/goopt v0.0.0-20170604162106-0b8effe182da/go.mod h1:ytRJ64WkuW4kf6/tuYqBATBCRFUP8X9+LDtgcvE+koI=
+github.com/dustinpianalto/quotearg v0.0.1 h1:xOFDoVUynWjIroscuIvlVC/ClKTPVEJS3hACgGJS04w=
+github.com/dustinpianalto/quotearg v0.0.1/go.mod h1:iTJRlY94fTiBYMJPmHxsjyensPAFut/3ruOMvSTcqg4=
+github.com/dustinpianalto/quotearg v0.0.2 h1:4u8pohblUd+aP7/PZ58UiRkDtoimtZgfvfpY211y5tk=
+github.com/dustinpianalto/quotearg v0.0.2/go.mod h1:iTJRlY94fTiBYMJPmHxsjyensPAFut/3ruOMvSTcqg4=
+github.com/dustinpianalto/quotearg v0.0.3 h1:GWP0yKgjRqIPYev/1rSjhlkLbJQYU+37BnGi7e4MG5g=
+github.com/dustinpianalto/quotearg v0.0.3/go.mod h1:iTJRlY94fTiBYMJPmHxsjyensPAFut/3ruOMvSTcqg4=

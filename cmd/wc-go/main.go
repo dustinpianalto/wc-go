@@ -33,9 +33,15 @@ package main
 //              output version information and exit
 
 import (
+	"bufio"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"strings"
 
 	"github.com/droundy/goopt"
+	"github.com/dustinpianalto/quotearg"
 	"github.com/dustinpianalto/wc-go/pkg/wc"
 )
 
@@ -69,9 +75,10 @@ var (
 func main() {
 	goopt.Version = "v0.0.0a"
 	goopt.Parse(nil)
-	if len(goopt.Args) == 0 {
+	if len(goopt.Args) == 0 && *fFilesFrom == "" {
 		fmt.Println(goopt.Help())
 	} else {
+
 		if !*fWords && !*fChars && !*fLines && !*fBytes && !*fMaxLineLength {
 			*fWords = true
 			*fChars = false
@@ -79,8 +86,59 @@ func main() {
 			*fBytes = true
 			*fMaxLineLength = false
 		}
+
+		var files []string
+		if *fFilesFrom != "" {
+			fFile, err := os.Open(*fFilesFrom)
+			if err != nil {
+				log.Fatalf("Cannot open file %s: %s", fFilesFrom, err.Error())
+			}
+			reader := bufio.NewReader(fFile)
+			for {
+				s, err := reader.ReadString(0x00)
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					log.Fatal(err)
+				}
+				files = append(files, strings.TrimRight(s, "\x00"))
+			}
+
+			fFile.Close()
+		}
+
+		files = append(files, goopt.Args...)
+
+		var maxBytes int64
+		if len(files) > 1 ||
+			((*fWords && *fChars) ||
+				(*fWords && *fLines) ||
+				(*fWords && *fBytes) ||
+				(*fWords && *fMaxLineLength) ||
+				(*fChars && *fLines) ||
+				(*fChars && *fBytes) ||
+				(*fChars && *fMaxLineLength) ||
+				(*fLines && *fBytes) ||
+				(*fLines && *fMaxLineLength) ||
+				(*fBytes && *fMaxLineLength)) {
+			for _, f := range files {
+				fp, err := os.Open(f)
+				if err != nil {
+					continue
+				}
+				fi, err := fp.Stat()
+				if err != nil {
+					continue
+				}
+				b := fi.Size()
+				maxBytes += b
+			}
+		}
+
+		var maxStrLen = intLen(maxBytes)
+
 		var TotalCounts wc.Counter
-		for _, a := range goopt.Args {
+		for _, a := range files {
 			count, err := wc.Count(a, *fWords, *fChars, *fLines, *fBytes, *fMaxLineLength)
 			if err == nil {
 				TotalCounts.Lines += count.Lines
@@ -89,49 +147,56 @@ func main() {
 				TotalCounts.Chars += count.Chars
 				TotalCounts.MaxLineLength += count.MaxLineLength
 				if *fLines {
-					fmt.Printf("%d", count.Lines)
+					fmt.Printf("%*d ", maxStrLen, count.Lines)
 				}
-				fmt.Printf(" ")
 				if *fWords {
-					fmt.Printf("%d", count.Words)
+					fmt.Printf("%*d ", maxStrLen, count.Words)
 				}
-				fmt.Printf(" ")
 				if *fChars {
-					fmt.Printf("%d", count.Chars)
+					fmt.Printf("%*d ", maxStrLen, count.Chars)
 				}
-				fmt.Printf(" ")
 				if *fBytes {
-					fmt.Printf("%d", count.Bytes)
+					fmt.Printf("%*d ", maxStrLen, count.Bytes)
 				}
-				fmt.Printf(" ")
 				if *fMaxLineLength {
-					fmt.Printf("%d", count.MaxLineLength)
+					fmt.Printf("%*d ", maxStrLen, count.MaxLineLength)
 				}
-				fmt.Printf(" %s\n", a)
-			}
+				if strings.Contains(a, "\n") {
+					n := quotearg.Quote([]rune(a), quotearg.ShellEscapeAlwaysQuotingStyle, 0, 0, '\'', '\'')
+					fmt.Printf("%s\n", string(n))
+				} else {
+					fmt.Printf("%s\n", a)
 
+				}
+			}
 		}
-		if len(goopt.Args) > 1 {
+
+		if len(files) > 1 {
 			if *fLines {
-				fmt.Printf("%d", TotalCounts.Lines)
+				fmt.Printf("%*d ", maxStrLen, TotalCounts.Lines)
 			}
-			fmt.Printf(" ")
 			if *fWords {
-				fmt.Printf("%d", TotalCounts.Words)
+				fmt.Printf("%*d ", maxStrLen, TotalCounts.Words)
 			}
-			fmt.Printf(" ")
 			if *fChars {
-				fmt.Printf("%d", TotalCounts.Chars)
+				fmt.Printf("%*d ", maxStrLen, TotalCounts.Chars)
 			}
-			fmt.Printf(" ")
 			if *fBytes {
-				fmt.Printf("%d", TotalCounts.Bytes)
+				fmt.Printf("%*d ", maxStrLen, TotalCounts.Bytes)
 			}
-			fmt.Printf(" ")
 			if *fMaxLineLength {
-				fmt.Printf("%d", TotalCounts.MaxLineLength)
+				fmt.Printf("%*d ", maxStrLen, TotalCounts.MaxLineLength)
 			}
-			fmt.Println(" total")
+			fmt.Println("total")
 		}
 	}
+}
+
+func intLen(i int64) int64 {
+	var count int64
+	for i != 0 {
+		i /= 10
+		count++
+	}
+	return count
 }
